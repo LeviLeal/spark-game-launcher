@@ -95,7 +95,6 @@ void GameConfigDialog::setupUi()
 
     // 5. Native / Emulator options
     m_nativeGroup = new QGroupBox(tr("Native Settings"), this);
-    m_nativeGroup->setFlat(true);
     auto *nativeFormLayout = new QFormLayout(m_nativeGroup);
     nativeFormLayout->setFieldGrowthPolicy(QFormLayout::ExpandingFieldsGrow);
     nativeFormLayout->setLabelAlignment(Qt::AlignRight | Qt::AlignVCenter);
@@ -108,7 +107,6 @@ void GameConfigDialog::setupUi()
 
     // 6. Wine / Proton options
     m_wineGroup = new QGroupBox(tr("Wine settings"), this);
-    m_wineGroup->setFlat(true);
     auto *wineFormLayout = new QFormLayout(m_wineGroup);
     wineFormLayout->setFieldGrowthPolicy(QFormLayout::ExpandingFieldsGrow);
     wineFormLayout->setLabelAlignment(Qt::AlignRight | Qt::AlignVCenter);

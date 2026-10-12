@@ -134,13 +134,11 @@ void ExportSettingsWidget::setupUi()
     prefixHeaderLayout->addStretch(1);
 
     m_selectAllPrefixesBtn = new QPushButton(tr("Select All"), m_prefixContainer);
-    m_selectAllPrefixesBtn->setFlat(true);
     m_selectAllPrefixesBtn->setCursor(Qt::PointingHandCursor);
     connect(m_selectAllPrefixesBtn, &QPushButton::clicked, this, &ExportSettingsWidget::onSelectAllPrefixes);
     prefixHeaderLayout->addWidget(m_selectAllPrefixesBtn);
 
     m_deselectAllPrefixesBtn = new QPushButton(tr("Deselect All"), m_prefixContainer);
-    m_deselectAllPrefixesBtn->setFlat(true);
     m_deselectAllPrefixesBtn->setCursor(Qt::PointingHandCursor);
     connect(m_deselectAllPrefixesBtn, &QPushButton::clicked, this, &ExportSettingsWidget::onDeselectAllPrefixes);
     prefixHeaderLayout->addWidget(m_deselectAllPrefixesBtn);
