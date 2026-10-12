@@ -26,12 +26,16 @@ QList<WineVersionInfo> RunnerDetector::detectWineVersions()
         }
     };
 
-    // 1. Search custom Steam compatibility tools
+    // 1. Search custom Steam and third-party compatibility tools
     QString home = QDir::homePath();
     QStringList customToolsDirs = {
         home + QStringLiteral("/.local/share/Steam/compatibilitytools.d"),
         home + QStringLiteral("/.steam/root/compatibilitytools.d"),
         home + QStringLiteral("/.steam/steam/compatibilitytools.d"),
+        home + QStringLiteral("/.local/share/vermouth/protons"),
+        home + QStringLiteral("/.local/share/lutris/runners/wine"),
+        home + QStringLiteral("/.config/heroic/tools/wine"),
+        home + QStringLiteral("/.config/heroic/tools/proton"),
         QStringLiteral("/usr/share/steam/compatibilitytools.d")
     };
 
@@ -76,10 +80,15 @@ QList<WineVersionInfo> RunnerDetector::detectWineVersions()
         const QFileInfoList entries = dir.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot);
         for (const QFileInfo &entry : entries) {
             QString protonBin = entry.filePath() + QStringLiteral("/proton");
+            QString wineBin = entry.filePath() + QStringLiteral("/bin/wine");
+            QString filesWineBin = entry.filePath() + QStringLiteral("/files/bin/wine");
+
             if (QFile::exists(protonBin)) {
                 addVersion(entry.fileName(), protonBin);
-            } else {
-                addVersion(entry.fileName(), entry.filePath());
+            } else if (QFile::exists(wineBin)) {
+                addVersion(entry.fileName(), wineBin);
+            } else if (QFile::exists(filesWineBin)) {
+                addVersion(entry.fileName(), filesWineBin);
             }
         }
     }

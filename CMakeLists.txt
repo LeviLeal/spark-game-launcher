@@ -23,6 +23,8 @@ add_executable(spark
     src/utils/librarymanager.cpp
     src/utils/processmanager.h
     src/utils/processmanager.cpp
+    src/utils/umumanager.h
+    src/utils/umumanager.cpp
     src/dialogs/gameconfigdialog.h
     src/dialogs/gameconfigdialog.cpp
     src/dialogs/logviewerdialog.h
@@ -33,6 +35,8 @@ add_executable(spark
     src/dialogs/generalsettingswidget.cpp
     src/dialogs/protondownloadwidget.h
     src/dialogs/protondownloadwidget.cpp
+    src/dialogs/exportsettingswidget.h
+    src/dialogs/exportsettingswidget.cpp
     resources.qrc
 )
 

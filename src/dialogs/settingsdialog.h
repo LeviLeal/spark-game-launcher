@@ -8,6 +8,7 @@ class QStackedWidget;
 class QDialogButtonBox;
 class ProtonDownloadWidget;
 class GeneralSettingsWidget;
+class ExportSettingsWidget;
 
 class SettingsDialog : public QDialog
 {
@@ -16,6 +17,11 @@ class SettingsDialog : public QDialog
 public:
     explicit SettingsDialog(QWidget *parent = nullptr);
     ~SettingsDialog() override = default;
+
+    bool isLibraryModified() const { return m_libraryModified; }
+
+signals:
+    void libraryChanged();
 
 protected:
     void changeEvent(QEvent *event) override;
@@ -30,6 +36,9 @@ private:
     QDialogButtonBox *m_buttonBox{nullptr};
     GeneralSettingsWidget *m_generalSettingsWidget{nullptr};
     ProtonDownloadWidget *m_protonDownloadWidget{nullptr};
+    ExportSettingsWidget *m_exportSettingsWidget{nullptr};
+
+    bool m_libraryModified{false};
 };
 
 #endif // SETTINGSDIALOG_H

@@ -52,7 +52,11 @@ private:
     void updateGameInGrid(const Game &game);
     void updateToolbarState();
     void updateToolBarIcons();
+    void syncIconTheme();
+    void applyThemeChange();
+    void updateGameListStyle();
     void toggleGame(const QString &gameId);
+    void launchGame(const QString &gameId, bool closeOnLaunch = false);
     QString selectedGameId() const;
     const Game* findGame(const QString &gameId) const;
 

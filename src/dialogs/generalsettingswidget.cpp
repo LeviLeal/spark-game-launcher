@@ -35,7 +35,6 @@ void GeneralSettingsWidget::setupUi()
 
     // GroupBox Integração com o Desktop
     auto *group = new QGroupBox(tr("Desktop Integration"), this);
-    group->setFlat(true);
     auto *groupLayout = new QVBoxLayout(group);
     groupLayout->setSpacing(14);
     groupLayout->setContentsMargins(16, 18, 16, 16);

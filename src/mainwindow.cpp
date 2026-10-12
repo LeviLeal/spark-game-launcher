@@ -8,8 +8,12 @@
 #include <QMessageBox>
 #include <QMouseEvent>
 #include <QCheckBox>
-#include <QVBoxLayout>
 #include <QWidget>
+#include <QApplication>
+#include <QStyleHints>
+#include <QStyle>
+#include <QStyleFactory>
+#include <QTimer>
 
 #include "dialogs/gameconfigdialog.h"
 #include "dialogs/logviewerdialog.h"
@@ -17,6 +21,7 @@
 #include "utils/iconhelper.h"
 #include "utils/librarymanager.h"
 #include "utils/processmanager.h"
+#include "utils/umumanager.h"
 #include <QFileDialog>
 #include <QDir>
 #include <QFileInfo>
@@ -37,6 +42,12 @@ MainWindow::MainWindow(QWidget *parent)
     setupToolBar();
     loadLibrary();
     updateToolbarState();
+
+    if (qApp && qApp->styleHints()) {
+        connect(qApp->styleHints(), &QStyleHints::colorSchemeChanged, this, [this](Qt::ColorScheme) {
+            QTimer::singleShot(20, this, &MainWindow::applyThemeChange);
+        });
+    }
 }
 
 MainWindow::~MainWindow() = default;
@@ -71,6 +82,7 @@ void MainWindow::setupToolBar()
     m_settingsAction->setToolTip(tr("Configure Spark"));
     connect(m_settingsAction, &QAction::triggered, this, &MainWindow::onSettingsClicked);
 
+    syncIconTheme();
     updateToolBarIcons();
 
     m_toolBar->addAction(m_addGameAction);
@@ -109,30 +121,7 @@ void MainWindow::setupCentralWidget()
     m_gameListWidget->viewport()->setMouseTracking(true);
     m_gameListWidget->viewport()->installEventFilter(this);
 
-    m_gameListWidget->setStyleSheet(QStringLiteral(
-        "QListWidget {"
-        "    background: transparent;"
-        "    outline: 0;"
-        "    padding: 10px;"
-        "}"
-        "QListWidget::item {"
-        "    border: 1px solid transparent;"
-        "    border-radius: 5px;"
-        "    padding: 4px;"
-        "}"
-        "QListWidget::item:hover {"
-        "    background-color: rgba(61, 174, 233, 0.18);"
-        "    border: 1px solid rgba(61, 174, 233, 0.55);"
-        "}"
-        "QListWidget::item:selected {"
-        "    background-color: rgba(61, 174, 233, 0.32);"
-        "    border: 1px solid rgba(61, 174, 233, 0.85);"
-        "}"
-        "QListWidget::item:selected:hover {"
-        "    background-color: rgba(61, 174, 233, 0.42);"
-        "    border: 1px solid rgba(61, 174, 233, 0.95);"
-        "}"
-    ));
+    updateGameListStyle();
 
     connect(m_gameListWidget, &QListWidget::customContextMenuRequested,
             this, &MainWindow::onContextMenuRequested);
@@ -295,16 +284,105 @@ void MainWindow::updateToolBarIcons()
     updateToolbarState();
 }
 
+void MainWindow::syncIconTheme()
+{
+    const QColor windowColor = QApplication::palette().color(QPalette::Window);
+    const bool isDark = (windowColor.lightness() < 128);
+
+    const QString currentTheme = QIcon::themeName();
+    QString targetTheme = currentTheme;
+
+    if (isDark) {
+        if (!currentTheme.contains(QStringLiteral("dark"), Qt::CaseInsensitive)) {
+            if (QFile::exists(QStringLiteral("/usr/share/icons/") + currentTheme + QStringLiteral("-dark"))) {
+                targetTheme = currentTheme + QStringLiteral("-dark");
+            } else if (QFile::exists(QStringLiteral("/usr/share/icons/breeze-dark"))) {
+                targetTheme = QStringLiteral("breeze-dark");
+            }
+        }
+    } else {
+        if (currentTheme.contains(QStringLiteral("dark"), Qt::CaseInsensitive)) {
+            QString lightCandidate = currentTheme;
+            lightCandidate.remove(QStringLiteral("-dark"), Qt::CaseInsensitive);
+            lightCandidate.remove(QStringLiteral("dark"), Qt::CaseInsensitive);
+            if (QFile::exists(QStringLiteral("/usr/share/icons/") + lightCandidate)) {
+                targetTheme = lightCandidate;
+            } else if (QFile::exists(QStringLiteral("/usr/share/icons/breeze"))) {
+                targetTheme = QStringLiteral("breeze");
+            }
+        }
+    }
+
+    if (!targetTheme.isEmpty() && targetTheme != currentTheme) {
+        QIcon::setThemeName(targetTheme);
+    }
+}
+
+void MainWindow::updateGameListStyle()
+{
+    if (!m_gameListWidget) {
+        return;
+    }
+
+    m_gameListWidget->setPalette(QApplication::palette());
+    m_gameListWidget->viewport()->setPalette(QApplication::palette());
+
+    m_gameListWidget->setStyleSheet(QStringLiteral(
+        "QListWidget {"
+        "    background: transparent;"
+        "    outline: 0;"
+        "    padding: 10px;"
+        "}"
+        "QListWidget::item {"
+        "    color: palette(text);"
+        "    border: 1px solid transparent;"
+        "    border-radius: 5px;"
+        "    padding: 4px;"
+        "}"
+        "QListWidget::item:hover {"
+        "    background-color: rgba(61, 174, 233, 0.18);"
+        "    border: 1px solid rgba(61, 174, 233, 0.55);"
+        "}"
+        "QListWidget::item:selected {"
+        "    background-color: rgba(61, 174, 233, 0.32);"
+        "    border: 1px solid rgba(61, 174, 233, 0.85);"
+        "}"
+        "QListWidget::item:selected:hover {"
+        "    background-color: rgba(61, 174, 233, 0.42);"
+        "    border: 1px solid rgba(61, 174, 233, 0.95);"
+        "}"
+    ));
+
+    m_gameListWidget->style()->unpolish(m_gameListWidget);
+    m_gameListWidget->style()->polish(m_gameListWidget);
+    m_gameListWidget->viewport()->update();
+}
+
+void MainWindow::applyThemeChange()
+{
+    static bool s_updatingTheme = false;
+    if (s_updatingTheme) {
+        return;
+    }
+    s_updatingTheme = true;
+
+    syncIconTheme();
+    QPixmapCache::clear();
+    updateToolBarIcons();
+    updateGameListStyle();
+    update();
+
+    s_updatingTheme = false;
+}
+
 void MainWindow::changeEvent(QEvent *event)
 {
     if (event->type() == QEvent::PaletteChange ||
-        event->type() == QEvent::ThemeChange ||
         event->type() == QEvent::ApplicationPaletteChange) {
-        QPixmapCache::clear();
-        updateToolBarIcons();
-        if (m_gameListWidget) {
-            m_gameListWidget->viewport()->update();
-        }
+        applyThemeChange();
+        QTimer::singleShot(0, this, &MainWindow::applyThemeChange);
+    } else if (event->type() == QEvent::ThemeChange) {
+        QTimer::singleShot(20, this, &MainWindow::applyThemeChange);
     }
     QMainWindow::changeEvent(event);
 }
@@ -328,7 +406,17 @@ void MainWindow::onRemoveGameClicked()
 void MainWindow::onSettingsClicked()
 {
     SettingsDialog dialog(this);
+    connect(&dialog, &SettingsDialog::libraryChanged, this, [this]() {
+        m_gameListWidget->clear();
+        loadLibrary();
+        updateToolbarState();
+    });
     dialog.exec();
+    if (dialog.isLibraryModified()) {
+        m_gameListWidget->clear();
+        loadLibrary();
+        updateToolbarState();
+    }
 }
 
 void MainWindow::toggleGame(const QString &gameId)
@@ -341,7 +429,40 @@ void MainWindow::toggleGame(const QString &gameId)
     if (m_processManager->isGameRunning(gameId)) {
         m_processManager->stopGame(gameId);
     } else {
-        m_processManager->startGame(*game);
+        launchGame(gameId, false);
+    }
+}
+
+void MainWindow::launchGame(const QString &gameId, bool closeOnLaunch)
+{
+    const Game *game = findGame(gameId);
+    if (!game) {
+        return;
+    }
+
+    bool isProton = game->runner == GameRunner::Wine &&
+                    game->wineVersion.contains(QStringLiteral("proton"), Qt::CaseInsensitive);
+
+    if (isProton && !UmuManager::isUmuAvailable()) {
+        UmuManager::ensureUmuInstalled(this, [this, gameId, closeOnLaunch](bool success) {
+            Q_UNUSED(success);
+            const Game *g = findGame(gameId);
+            if (!g) {
+                return;
+            }
+            if (m_processManager->startGame(*g, closeOnLaunch)) {
+                if (closeOnLaunch) {
+                    close();
+                }
+            }
+        });
+        return;
+    }
+
+    if (m_processManager->startGame(*game, closeOnLaunch)) {
+        if (closeOnLaunch) {
+            close();
+        }
     }
 }
 
@@ -466,12 +587,7 @@ void MainWindow::onContextMenuRequested(const QPoint &pos)
     if (playStopAction && selectedAction == playStopAction) {
         toggleGame(gameId);
     } else if (playAndCloseAction && selectedAction == playAndCloseAction) {
-        const Game *gameToPlay = findGame(gameId);
-        if (gameToPlay) {
-            if (m_processManager->startGame(*gameToPlay, true)) {
-                close();
-            }
-        }
+        launchGame(gameId, true);
     } else if (winetricksAction && selectedAction == winetricksAction) {
         onOpenWinetricks(gameId);
     } else if (runExeAction && selectedAction == runExeAction) {

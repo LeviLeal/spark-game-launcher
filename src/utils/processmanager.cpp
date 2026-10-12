@@ -1,4 +1,5 @@
 #include "processmanager.h"
+#include "umumanager.h"
 
 #include <QFileInfo>
 #include <QDir>
@@ -6,6 +7,7 @@
 #include <QTimer>
 #include <QTime>
 #include <QStandardPaths>
+#include <QCoreApplication>
 
 #include <unistd.h>
 #include <signal.h>
@@ -88,31 +90,55 @@ QProcess* ProcessManager::createProcessForGame(const Game &game)
             }
         }
 
+        QString prefix = game.winePrefix.trimmed();
+        if (prefix.isEmpty()) {
+            prefix = QDir::homePath() + QStringLiteral("/.local/share/spark/prefixes/") + game.id;
+        }
+        QDir().mkpath(prefix);
+
         if (isProton) {
-            program = protonBin;
-            arguments << QStringLiteral("run") << game.executablePath;
+            QString protonDir = QFileInfo(protonBin).isDir() ? protonBin : QFileInfo(protonBin).dir().absolutePath();
 
-            QString prefix = game.winePrefix.trimmed();
-            if (prefix.isEmpty()) {
-                prefix = QDir::homePath() + QStringLiteral("/.local/share/spark/prefixes/") + game.id;
+            QString umuBin = UmuManager::findUmuBin();
+
+            if (!umuBin.isEmpty()) {
+                program = umuBin;
+                arguments << game.executablePath;
+                env.insert(QStringLiteral("PROTONPATH"), protonDir);
+                env.insert(QStringLiteral("STEAM_COMPAT_DATA_PATH"), prefix);
+                env.insert(QStringLiteral("WINEPREFIX"), prefix);
+                env.insert(QStringLiteral("GAMEID"), QStringLiteral("0"));
+            } else {
+                program = protonBin;
+                arguments << QStringLiteral("run") << game.executablePath;
+
+                QString steamClientPath = QDir::homePath() + QStringLiteral("/.steam/steam");
+                if (!QDir(steamClientPath).exists()) {
+                    steamClientPath = QDir::homePath() + QStringLiteral("/.local/share/Steam");
+                }
+                if (!QDir(steamClientPath).exists()) {
+                    steamClientPath = QDir::homePath() + QStringLiteral("/.steam/root");
+                }
+                env.insert(QStringLiteral("STEAM_COMPAT_CLIENT_INSTALL_PATH"), steamClientPath);
+                env.insert(QStringLiteral("STEAM_COMPAT_DATA_PATH"), prefix);
             }
-            QDir().mkpath(prefix);
-
-            env.insert(QStringLiteral("STEAM_COMPAT_DATA_PATH"), prefix);
-
-            QString steamClientPath = QDir::homePath() + QStringLiteral("/.local/share/Steam");
-            if (!QDir(steamClientPath).exists()) {
-                steamClientPath = QDir::homePath() + QStringLiteral("/.steam/root");
-            }
-            env.insert(QStringLiteral("STEAM_COMPAT_CLIENT_INSTALL_PATH"), steamClientPath);
         } else {
             // Wine tradicional
             program = wineVersion.isEmpty() ? QStringLiteral("wine") : wineVersion;
             arguments << game.executablePath;
+            env.insert(QStringLiteral("WINEPREFIX"), prefix);
+        }
 
-            if (!game.winePrefix.trimmed().isEmpty()) {
-                QDir().mkpath(game.winePrefix.trimmed());
-                env.insert(QStringLiteral("WINEPREFIX"), game.winePrefix.trimmed());
+        // Suporte a pré-comando (como gamemoderun ou mangohud) para Wine / Proton
+        QString preCmd = game.preCommand.trimmed();
+        if (!preCmd.isEmpty()) {
+            QStringList parts = QProcess::splitCommand(preCmd);
+            if (!parts.isEmpty()) {
+                arguments.prepend(program);
+                for (int i = parts.size() - 1; i >= 1; --i) {
+                    arguments.prepend(parts.at(i));
+                }
+                program = parts.first();
             }
         }
     }

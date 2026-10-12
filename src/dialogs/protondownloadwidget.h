@@ -13,6 +13,7 @@ class QProgressBar;
 class QPushButton;
 class QLabel;
 class QVBoxLayout;
+class QFrame;
 
 struct ProtonReleaseInfo {
     QString name;
@@ -84,6 +85,12 @@ private:
     QString m_downloadTempPath;
     ProtonReleaseInfo m_activeDownloadInfo;
     ProtonRowWidget *m_activeRow{nullptr};
+
+    void updateUmuCard();
+
+    QFrame *m_umuCard{nullptr};
+    QLabel *m_umuStatusLabel{nullptr};
+    QPushButton *m_umuButton{nullptr};
 
     QVBoxLayout *m_rowsLayout{nullptr};
     QLabel *m_statusLabel{nullptr};

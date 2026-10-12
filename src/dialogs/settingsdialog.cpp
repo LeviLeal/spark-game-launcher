@@ -1,6 +1,7 @@
 #include "settingsdialog.h"
 #include "generalsettingswidget.h"
 #include "protondownloadwidget.h"
+#include "exportsettingswidget.h"
 
 #include <QHBoxLayout>
 #include <QVBoxLayout>
@@ -70,6 +71,13 @@ void SettingsDialog::setupUi()
 
     m_protonDownloadWidget = new ProtonDownloadWidget(m_stackedWidget);
     addPane(m_protonDownloadWidget, tr("Proton Downloads"));
+
+    m_exportSettingsWidget = new ExportSettingsWidget(m_stackedWidget);
+    connect(m_exportSettingsWidget, &ExportSettingsWidget::dataImported, this, [this]() {
+        m_libraryModified = true;
+        emit libraryChanged();
+    });
+    addPane(m_exportSettingsWidget, tr("Export / Import"));
 
     m_categoryList->setCurrentRow(0);
 }

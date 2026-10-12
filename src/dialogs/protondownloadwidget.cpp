@@ -1,4 +1,5 @@
 #include "protondownloadwidget.h"
+#include "../utils/umumanager.h"
 
 #include <QHBoxLayout>
 #include <QVBoxLayout>
@@ -311,6 +312,48 @@ void ProtonDownloadWidget::setupUi()
     separator->setFrameShadow(QFrame::Sunken);
     mainLayout->addWidget(separator);
 
+    // UMU Launcher Card
+    m_umuCard = new QFrame(this);
+    m_umuCard->setObjectName(QStringLiteral("umuCard"));
+    m_umuCard->setStyleSheet(QStringLiteral(
+        "#umuCard {"
+        "    background-color: palette(base);"
+        "    border: 1px solid palette(mid);"
+        "    border-radius: 6px;"
+        "}"
+    ));
+    auto *umuLayout = new QHBoxLayout(m_umuCard);
+    umuLayout->setContentsMargins(14, 10, 14, 10);
+    umuLayout->setSpacing(14);
+
+    auto *umuIconLabel = new QLabel(m_umuCard);
+    umuIconLabel->setFixedSize(36, 36);
+    umuIconLabel->setPixmap(QIcon::fromTheme(QStringLiteral("applications-games")).pixmap(32, 32));
+    umuLayout->addWidget(umuIconLabel);
+
+    auto *umuInfoLayout = new QVBoxLayout();
+    auto *umuTitle = new QLabel(QStringLiteral("<b>UMU Launcher</b> (Steam Linux Runtime Compatibility)"), m_umuCard);
+    umuInfoLayout->addWidget(umuTitle);
+
+    m_umuStatusLabel = new QLabel(m_umuCard);
+    m_umuStatusLabel->setStyleSheet(QStringLiteral("color: palette(placeholder-text); font-size: 11px;"));
+    umuInfoLayout->addWidget(m_umuStatusLabel);
+    umuLayout->addLayout(umuInfoLayout, 1);
+
+    m_umuButton = new QPushButton(m_umuCard);
+    m_umuButton->setCursor(Qt::PointingHandCursor);
+    connect(m_umuButton, &QPushButton::clicked, this, [this]() {
+        auto *mgr = new UmuManager(this);
+        mgr->startDownload(this, [this](bool success) {
+            Q_UNUSED(success);
+            updateUmuCard();
+        });
+    });
+    umuLayout->addWidget(m_umuButton);
+
+    mainLayout->addWidget(m_umuCard);
+    updateUmuCard();
+
     // Scroll Area com a lista de versões
     auto *scrollArea = new QScrollArea(this);
     scrollArea->setWidgetResizable(true);
@@ -326,6 +369,20 @@ void ProtonDownloadWidget::setupUi()
 
     scrollArea->setWidget(scrollContent);
     mainLayout->addWidget(scrollArea, 1);
+}
+
+void ProtonDownloadWidget::updateUmuCard()
+{
+    QString bin = UmuManager::findUmuBin();
+    if (!bin.isEmpty()) {
+        m_umuStatusLabel->setText(tr("Installed: %1").arg(bin));
+        m_umuButton->setText(tr("Reinstall / Update"));
+        m_umuButton->setIcon(QIcon::fromTheme(QStringLiteral("view-refresh")));
+    } else {
+        m_umuStatusLabel->setText(tr("Not installed. Recommended for running games with Proton."));
+        m_umuButton->setText(tr("Download UMU"));
+        m_umuButton->setIcon(QIcon::fromTheme(QStringLiteral("download")));
+    }
 }
 
 QString ProtonDownloadWidget::getSteamToolsDir() const
