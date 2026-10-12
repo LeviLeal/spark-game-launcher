@@ -459,24 +459,28 @@ void MainWindow::onContextMenuRequested(const QPoint &pos)
     }
 
     QAction *selectedAction = menu.exec(m_gameListWidget->viewport()->mapToGlobal(pos));
-    if (selectedAction == playStopAction) {
+    if (!selectedAction) {
+        return;
+    }
+
+    if (playStopAction && selectedAction == playStopAction) {
         toggleGame(gameId);
-    } else if (selectedAction == playAndCloseAction) {
+    } else if (playAndCloseAction && selectedAction == playAndCloseAction) {
         const Game *gameToPlay = findGame(gameId);
         if (gameToPlay) {
             if (m_processManager->startGame(*gameToPlay, true)) {
                 close();
             }
         }
-    } else if (selectedAction == winetricksAction) {
+    } else if (winetricksAction && selectedAction == winetricksAction) {
         onOpenWinetricks(gameId);
-    } else if (selectedAction == runExeAction) {
+    } else if (runExeAction && selectedAction == runExeAction) {
         onRunExeInPrefix(gameId);
-    } else if (selectedAction == viewLogsAction) {
+    } else if (viewLogsAction && selectedAction == viewLogsAction) {
         onViewLogs(gameId);
-    } else if (selectedAction == editAction) {
+    } else if (editAction && selectedAction == editAction) {
         onEditGame(gameId);
-    } else if (selectedAction == removeAction) {
+    } else if (removeAction && selectedAction == removeAction) {
         onRemoveGame(gameId);
     }
 }
