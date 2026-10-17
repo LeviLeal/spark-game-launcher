@@ -41,6 +41,7 @@ add_executable(spark
 )
 
 target_link_libraries(spark PRIVATE Qt6::Widgets Qt6::Network)
+target_compile_definitions(spark PRIVATE QT_NO_VERSION_TAGGING)
 
 add_custom_target(tarball
     COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/scripts/build-tarball.sh"

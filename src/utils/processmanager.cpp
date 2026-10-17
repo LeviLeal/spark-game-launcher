@@ -19,23 +19,18 @@ ProcessManager::ProcessManager(QObject *parent)
 
 ProcessManager::~ProcessManager()
 {
-    // Encerrar processos em execução ao fechar a aplicação
+    // Ao fechar o launcher, os jogos devem continuar em execução no sistema.
+    // Desconectamos os sinais para que não tentem emitir eventos e garantimos que
+    // nenhum processo seja finalizado.
     for (auto it = m_processes.begin(); it != m_processes.end(); ++it) {
         QProcess *proc = it.value();
-        if (proc && proc->state() != QProcess::NotRunning) {
-            qint64 pid = proc->processId();
-            if (pid > 0) {
-                ::kill(-pid, SIGTERM);
-            }
-            proc->terminate();
-            if (!proc->waitForFinished(1000)) {
-                if (pid > 0) {
-                    ::kill(-pid, SIGKILL);
-                }
-                proc->kill();
-            }
+        if (proc) {
+            proc->disconnect();
+            proc->setParent(nullptr);
         }
     }
+    m_processes.clear();
+    m_processToGameId.clear();
 }
 
 bool ProcessManager::isGameRunning(const QString &gameId) const
@@ -46,11 +41,15 @@ bool ProcessManager::isGameRunning(const QString &gameId) const
 
 QProcess* ProcessManager::createProcessForGame(const Game &game)
 {
-    auto *process = new QProcess(this);
+    // Não associar 'this' como parent do QProcess para evitar que a destruição
+    // do ProcessManager finalize o processo no SO através do ~QProcess()
+    auto *process = new QProcess(nullptr);
 
-    // Isolar o grupo de processos para permitir parar todos os subprocessos
+    // Isolar a sessão e o grupo de processos para permitir que o jogo continue independente
+    // e ignorar SIGPIPE para que a escrita de saída não finalize o processo caso os pipes fechem
     process->setChildProcessModifier([]() {
-        ::setpgid(0, 0);
+        ::setsid();
+        ::signal(SIGPIPE, SIG_IGN);
     });
 
     QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
