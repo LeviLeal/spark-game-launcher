@@ -1,5 +1,6 @@
 #include "processmanager.h"
 #include "umumanager.h"
+#include "configmanager.h"
 
 #include <QFileInfo>
 #include <QDir>
@@ -31,6 +32,7 @@ ProcessManager::~ProcessManager()
     }
     m_processes.clear();
     m_processToGameId.clear();
+    m_gamePrefixes.clear();
 }
 
 bool ProcessManager::isGameRunning(const QString &gameId) const
@@ -77,6 +79,9 @@ QProcess* ProcessManager::createProcessForGame(const Game &game)
     } else {
         // Runner Wine / Proton
         QString wineVersion = game.wineVersion.trimmed();
+        if (wineVersion.isEmpty()) {
+            wineVersion = ConfigManager::defaultWineVersion();
+        }
         bool isProton = wineVersion.contains(QStringLiteral("proton"), Qt::CaseInsensitive);
 
         // Se for um diretório contendo 'proton'
@@ -91,12 +96,13 @@ QProcess* ProcessManager::createProcessForGame(const Game &game)
 
         QString prefix = game.winePrefix.trimmed();
         if (prefix.isEmpty()) {
-            prefix = QDir::homePath() + QStringLiteral("/.local/share/spark/prefixes/") + game.id;
+            prefix = ConfigManager::defaultPrefixForGame(game.id);
         }
         QDir().mkpath(prefix);
 
         if (isProton) {
             QString protonDir = QFileInfo(protonBin).isDir() ? protonBin : QFileInfo(protonBin).dir().absolutePath();
+            bool hasActivePrefix = isPrefixActive(prefix, protonDir);
 
             QString umuBin = UmuManager::findUmuBin();
 
@@ -107,9 +113,14 @@ QProcess* ProcessManager::createProcessForGame(const Game &game)
                 env.insert(QStringLiteral("STEAM_COMPAT_DATA_PATH"), prefix);
                 env.insert(QStringLiteral("WINEPREFIX"), prefix);
                 env.insert(QStringLiteral("GAMEID"), QStringLiteral("0"));
+
+                if (hasActivePrefix) {
+                    env.insert(QStringLiteral("PROTON_VERB"), QStringLiteral("runinprefix"));
+                }
             } else {
                 program = protonBin;
-                arguments << QStringLiteral("run") << game.executablePath;
+                QString verb = hasActivePrefix ? QStringLiteral("runinprefix") : QStringLiteral("run");
+                arguments << verb << game.executablePath;
 
                 QString steamClientPath = QDir::homePath() + QStringLiteral("/.steam/steam");
                 if (!QDir(steamClientPath).exists()) {
@@ -185,6 +196,13 @@ bool ProcessManager::startGame(const Game &game, bool detached)
 
     m_processes.insert(game.id, process);
     m_processToGameId.insert(process, game.id);
+    if (game.runner == GameRunner::Wine) {
+        QString prefix = game.winePrefix.trimmed();
+        if (prefix.isEmpty()) {
+            prefix = ConfigManager::defaultWinePrefix();
+        }
+        m_gamePrefixes.insert(game.id, prefix);
+    }
 
     QString gameId = game.id;
     connect(process, &QProcess::started, this, [this, gameId]() {
@@ -328,6 +346,7 @@ void ProcessManager::onProcessFinished(int exitCode, QProcess::ExitStatus /*exit
     QString gameId = m_processToGameId.take(process);
     if (!gameId.isEmpty()) {
         m_processes.remove(gameId);
+        m_gamePrefixes.remove(gameId);
 
         QString time = QTime::currentTime().toString(QStringLiteral("hh:mm:ss"));
         QString exitMsg = QStringLiteral("[%1] [Spark] Process finished with exit code %2.\n")
@@ -362,6 +381,7 @@ void ProcessManager::onProcessError(QProcess::ProcessError error)
     if (error == QProcess::FailedToStart) {
         m_processToGameId.remove(process);
         m_processes.remove(gameId);
+        m_gamePrefixes.remove(gameId);
         process->deleteLater();
     }
 }
@@ -398,4 +418,54 @@ QString ProcessManager::getGameLog(const QString &gameId) const
 void ProcessManager::clearGameLog(const QString &gameId)
 {
     m_gameLogs[gameId].clear();
+}
+
+bool ProcessManager::isPrefixActive(const QString &prefix, const QString &protonDir) const
+{
+    if (prefix.trimmed().isEmpty()) {
+        return false;
+    }
+
+    QString canonicalTarget = QFileInfo(prefix).canonicalFilePath();
+    if (canonicalTarget.isEmpty()) {
+        canonicalTarget = prefix.trimmed();
+    }
+
+    // 1. Verifica se já existe um jogo executando no Spark com este mesmo prefixo
+    for (auto it = m_gamePrefixes.constBegin(); it != m_gamePrefixes.constEnd(); ++it) {
+        QString runningCanonical = QFileInfo(it.value()).canonicalFilePath();
+        if (runningCanonical.isEmpty()) {
+            runningCanonical = it.value().trimmed();
+        }
+        if (runningCanonical == canonicalTarget) {
+            QProcess *proc = m_processes.value(it.key(), nullptr);
+            if (proc && proc->state() != QProcess::NotRunning) {
+                return true;
+            }
+        }
+    }
+
+    // 2. Verifica se o wineserver já está ativo para este prefixo no sistema
+    QString wineserverBin = protonDir + QStringLiteral("/files/bin/wineserver");
+    if (!QFile::exists(wineserverBin)) {
+        wineserverBin = protonDir + QStringLiteral("/bin/wineserver");
+    }
+    if (!QFile::exists(wineserverBin)) {
+        wineserverBin = QStandardPaths::findExecutable(QStringLiteral("wineserver"));
+    }
+
+    if (!wineserverBin.isEmpty()) {
+        QProcess checkProc;
+        QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+        env.insert(QStringLiteral("WINEPREFIX"), prefix);
+        checkProc.setProcessEnvironment(env);
+        checkProc.start(wineserverBin, QStringList{QStringLiteral("-k0")});
+        if (checkProc.waitForFinished(100)) {
+            if (checkProc.exitCode() == 0) {
+                return true;
+            }
+        }
+    }
+
+    return false;
 }

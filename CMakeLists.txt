@@ -26,12 +26,16 @@ add_executable(spark
     src/utils/processmanager.cpp
     src/utils/umumanager.h
     src/utils/umumanager.cpp
+    src/utils/configmanager.h
+    src/utils/configmanager.cpp
     src/dialogs/gameconfigdialog.h
     src/dialogs/gameconfigdialog.cpp
     src/dialogs/logviewerdialog.h
     src/dialogs/logviewerdialog.cpp
     src/dialogs/settingsdialog.h
     src/dialogs/settingsdialog.cpp
+    src/dialogs/winesettingswidget.h
+    src/dialogs/winesettingswidget.cpp
     src/dialogs/generalsettingswidget.h
     src/dialogs/generalsettingswidget.cpp
     src/dialogs/protondownloadwidget.h

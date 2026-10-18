@@ -1,6 +1,7 @@
 #include "gameconfigdialog.h"
 #include "../utils/runnerdetector.h"
 #include "../utils/iconhelper.h"
+#include "../utils/configmanager.h"
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -114,7 +115,7 @@ void GameConfigDialog::setupUi()
     // Prefix
     auto *prefixLayout = new QHBoxLayout();
     m_prefixEdit = new QLineEdit(m_wineGroup);
-    m_prefixEdit->setPlaceholderText(tr("e.g. ~/.local/share/spark/prefixes/my_game"));
+    m_prefixEdit->setPlaceholderText(tr("e.g. ~/.local/share/spark/prefixes/default"));
     m_browsePrefixBtn = new QPushButton(QIcon::fromTheme(QStringLiteral("folder-open")), QString(), m_wineGroup);
     m_browsePrefixBtn->setToolTip(tr("Browse prefix folder..."));
     m_browsePrefixBtn->setFixedSize(32, 32);
@@ -164,6 +165,12 @@ void GameConfigDialog::populateWineVersions()
     for (const auto &ver : versions) {
         m_wineVersionCombo->addItem(ver.name, ver.path);
     }
+
+    QString defaultVer = ConfigManager::defaultWineVersion();
+    int defaultIdx = m_wineVersionCombo->findData(defaultVer);
+    if (defaultIdx >= 0) {
+        m_wineVersionCombo->setCurrentIndex(defaultIdx);
+    }
 }
 
 void GameConfigDialog::onRunnerChanged(int index)
@@ -172,6 +179,11 @@ void GameConfigDialog::onRunnerChanged(int index)
     bool isWine = (runner == GameRunner::Wine);
     m_wineGroup->setVisible(isWine);
     m_nativeGroup->setVisible(!isWine);
+
+    if (isWine && m_prefixEdit->text().trimmed().isEmpty()) {
+        m_prefixEdit->setText(ConfigManager::defaultWinePrefix());
+    }
+
     adjustSize();
 }
 
@@ -205,6 +217,10 @@ void GameConfigDialog::onBrowseExecutableClicked()
             m_runnerCombo->setCurrentIndex(wineIndex);
         }
 
+        if (m_prefixEdit->text().trimmed().isEmpty()) {
+            m_prefixEdit->setText(ConfigManager::defaultWinePrefix());
+        }
+
         // Auto-extract icon if icoutils is available and icon field is empty
         if (m_iconEdit->text().trimmed().isEmpty() && IconHelper::isIcoutilsAvailable()) {
             QString extractedIcon = IconHelper::extractExeIcon(file);
@@ -219,7 +235,7 @@ void GameConfigDialog::onBrowseExecutableClicked()
 void GameConfigDialog::onBrowsePrefixClicked()
 {
     QString current = m_prefixEdit->text().trimmed();
-    QString startDir = current.isEmpty() ? QDir::homePath() : current;
+    QString startDir = current.isEmpty() ? ConfigManager::defaultWinePrefix() : current;
 
     QString dir = QFileDialog::getExistingDirectory(
         this,

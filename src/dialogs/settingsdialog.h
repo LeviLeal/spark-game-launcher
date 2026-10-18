@@ -9,6 +9,7 @@ class QDialogButtonBox;
 class ProtonDownloadWidget;
 class GeneralSettingsWidget;
 class ExportSettingsWidget;
+class WineSettingsWidget;
 
 class SettingsDialog : public QDialog
 {
@@ -35,6 +36,7 @@ private:
     QStackedWidget *m_stackedWidget{nullptr};
     QDialogButtonBox *m_buttonBox{nullptr};
     GeneralSettingsWidget *m_generalSettingsWidget{nullptr};
+    WineSettingsWidget *m_wineSettingsWidget{nullptr};
     ProtonDownloadWidget *m_protonDownloadWidget{nullptr};
     ExportSettingsWidget *m_exportSettingsWidget{nullptr};
 

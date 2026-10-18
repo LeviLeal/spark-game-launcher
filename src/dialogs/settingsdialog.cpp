@@ -2,6 +2,7 @@
 #include "generalsettingswidget.h"
 #include "protondownloadwidget.h"
 #include "exportsettingswidget.h"
+#include "winesettingswidget.h"
 
 #include <QHBoxLayout>
 #include <QVBoxLayout>
@@ -62,15 +63,22 @@ void SettingsDialog::setupUi()
     mainLayout->addWidget(rightSide, 1);
 
     // Conectar navegação da lista ao stacked widget
-    connect(m_categoryList, &QListWidget::currentRowChanged,
-            m_stackedWidget, &QStackedWidget::setCurrentIndex);
+    connect(m_categoryList, &QListWidget::currentRowChanged, this, [this](int row) {
+        m_stackedWidget->setCurrentIndex(row);
+        if (m_stackedWidget->widget(row) == m_wineSettingsWidget) {
+            m_wineSettingsWidget->refresh();
+        }
+    });
 
     // Panes de configuração
-    m_generalSettingsWidget = new GeneralSettingsWidget(m_stackedWidget);
-    addPane(m_generalSettingsWidget, tr("Desktop Integration"));
+    m_wineSettingsWidget = new WineSettingsWidget(m_stackedWidget);
+    addPane(m_wineSettingsWidget, tr("Wine"));
 
     m_protonDownloadWidget = new ProtonDownloadWidget(m_stackedWidget);
     addPane(m_protonDownloadWidget, tr("Proton Downloads"));
+
+    m_generalSettingsWidget = new GeneralSettingsWidget(m_stackedWidget);
+    addPane(m_generalSettingsWidget, tr("Desktop Integration"));
 
     m_exportSettingsWidget = new ExportSettingsWidget(m_stackedWidget);
     connect(m_exportSettingsWidget, &ExportSettingsWidget::dataImported, this, [this]() {

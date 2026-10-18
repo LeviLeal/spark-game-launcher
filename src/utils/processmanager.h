@@ -37,9 +37,11 @@ private slots:
 private:
     QProcess* createProcessForGame(const Game &game);
     void handleProcessOutput(QProcess *process, const QByteArray &data);
+    bool isPrefixActive(const QString &prefix, const QString &protonDir = QString()) const;
 
     QMap<QString, QProcess*> m_processes;
     QMap<QProcess*, QString> m_processToGameId;
+    QMap<QString, QString> m_gamePrefixes;
     QMap<QString, QString> m_gameLogs;
 };
 

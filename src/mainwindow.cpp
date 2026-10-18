@@ -22,6 +22,7 @@
 #include "utils/librarymanager.h"
 #include "utils/processmanager.h"
 #include "utils/umumanager.h"
+#include "utils/configmanager.h"
 #include <QFileDialog>
 #include <QDir>
 #include <QFileInfo>
@@ -507,7 +508,8 @@ void MainWindow::onAddGameClicked()
 
     if (filePath.endsWith(QStringLiteral(".exe"), Qt::CaseInsensitive)) {
         initialGame.runner = GameRunner::Wine;
-        initialGame.winePrefix = QDir::homePath() + QStringLiteral("/.local/share/spark/prefixes/") + fileInfo.completeBaseName().toLower();
+        initialGame.wineVersion = ConfigManager::defaultWineVersion();
+        initialGame.winePrefix = ConfigManager::defaultWinePrefix();
         if (IconHelper::isIcoutilsAvailable()) {
             initialGame.iconPath = IconHelper::extractExeIcon(filePath);
         }

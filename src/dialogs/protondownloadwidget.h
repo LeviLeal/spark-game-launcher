@@ -42,10 +42,7 @@ signals:
     void cancelRequested();
 
 private:
-    void updateIcon();
-
     ProtonReleaseInfo m_info;
-    QLabel *m_iconLabel{nullptr};
     QLabel *m_nameLabel{nullptr};
     QLabel *m_sizeLabel{nullptr};
     QProgressBar *m_progressBar{nullptr};
@@ -86,6 +83,7 @@ private:
     ProtonReleaseInfo m_activeDownloadInfo;
     ProtonRowWidget *m_activeRow{nullptr};
 
+    void createUmuCard(QWidget *parent);
     void updateUmuCard();
 
     QFrame *m_umuCard{nullptr};

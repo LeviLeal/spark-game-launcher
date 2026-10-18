@@ -61,33 +61,25 @@ ProtonRowWidget::ProtonRowWidget(const ProtonReleaseInfo &info, QWidget *parent)
     frameLayout->setContentsMargins(14, 10, 14, 10);
     frameLayout->setSpacing(14);
 
-    // Ícone da ferramenta / runner à esquerda
-    m_iconLabel = new QLabel(rowFrame);
-    m_iconLabel->setFixedSize(36, 36);
-    m_iconLabel->setAlignment(Qt::AlignCenter);
-    frameLayout->addWidget(m_iconLabel);
-
-    // 1. Informações da versão
-    auto *infoLayout = new QVBoxLayout();
-    infoLayout->setSpacing(2);
+    // Informações da versão: título e tamanho na frente (lado a lado)
+    auto *titleLayout = new QHBoxLayout();
+    titleLayout->setSpacing(8);
+    titleLayout->setContentsMargins(0, 0, 0, 0);
 
     m_nameLabel = new QLabel(m_info.name, rowFrame);
     QFont nameFont = m_nameLabel->font();
     nameFont.setBold(true);
     m_nameLabel->setFont(nameFont);
-    infoLayout->addWidget(m_nameLabel);
+    titleLayout->addWidget(m_nameLabel);
 
-    QString sizeStr = m_info.size > 0 ? formatBytes(m_info.size) : tr("Proton compatibility tool");
+    QString sizeStr = m_info.size > 0 ? formatBytes(m_info.size) : QString();
     m_sizeLabel = new QLabel(sizeStr, rowFrame);
-    m_sizeLabel->setStyleSheet(QStringLiteral("color: palette(placeholder-text); font-size: 11px;"));
-    infoLayout->addWidget(m_sizeLabel);
+    m_sizeLabel->setStyleSheet(QStringLiteral("color: palette(placeholder-text); font-size: 12px;"));
+    titleLayout->addWidget(m_sizeLabel);
 
-    auto *infoContainer = new QWidget(rowFrame);
-    infoContainer->setLayout(infoLayout);
-    infoContainer->setFixedWidth(160);
-    frameLayout->addWidget(infoContainer);
+    frameLayout->addLayout(titleLayout);
 
-    // 2. Container central com barra de progresso (visível apenas durante download/instalação)
+    // Container central com barra de progresso (visível apenas durante download/instalação)
     auto *centerContainer = new QWidget(rowFrame);
     auto *centerLayout = new QHBoxLayout(centerContainer);
     centerLayout->setContentsMargins(0, 0, 0, 0);
@@ -114,7 +106,7 @@ ProtonRowWidget::ProtonRowWidget(const ProtonReleaseInfo &info, QWidget *parent)
 
     frameLayout->addWidget(centerContainer, 1);
 
-    // 3. Botão de ação à direita
+    // Botão de ação à direita
     m_actionButton = new QPushButton(rowFrame);
     m_actionButton->setFixedWidth(115);
     m_actionButton->setFixedHeight(30);
@@ -136,62 +128,22 @@ ProtonRowWidget::ProtonRowWidget(const ProtonReleaseInfo &info, QWidget *parent)
     setInstalled(m_info.isInstalled);
 }
 
-void ProtonRowWidget::updateIcon()
-{
-    const int iconBox = 36;
-    QPixmap baseIcon(iconBox, iconBox);
-    baseIcon.fill(Qt::transparent);
-
-    QPainter p(&baseIcon);
-    p.setRenderHint(QPainter::Antialiasing);
-    p.drawPixmap(0, 0, QIcon::fromTheme(
-        QStringLiteral("wine"),
-        QIcon::fromTheme(QStringLiteral("applications-system"),
-        QIcon::fromTheme(QStringLiteral("application-x-executable"))
-    )).pixmap(32, 32));
-
-    if (m_info.isInstalled) {
-        // Ícone V verde de check no canto inferior direito do ícone do Proton
-        const int badgeSize = 16;
-        QPixmap badge(badgeSize, badgeSize);
-        badge.fill(Qt::transparent);
-        QPainter bp(&badge);
-        bp.setRenderHint(QPainter::Antialiasing);
-
-        bp.setPen(QPen(QColor(15, 18, 24, 220), 1.5));
-        bp.setBrush(QColor(QStringLiteral("#27ae60")));
-        bp.drawEllipse(1, 1, badgeSize - 2, badgeSize - 2);
-
-        bp.setPen(QPen(Qt::white, 1.8, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
-        QPolygonF check;
-        check << QPointF(badgeSize * 0.26, badgeSize * 0.52)
-              << QPointF(badgeSize * 0.44, badgeSize * 0.70)
-              << QPointF(badgeSize * 0.74, badgeSize * 0.32);
-        bp.drawPolyline(check);
-        bp.end();
-
-        p.drawPixmap(iconBox - badgeSize, iconBox - badgeSize, badge);
-    }
-    p.end();
-
-    m_iconLabel->setPixmap(baseIcon);
-}
-
 void ProtonRowWidget::setInstalled(bool installed)
 {
     m_info.isInstalled = installed;
     m_isDownloading = false;
 
-    updateIcon();
-
     // A barra de progresso fica oculta quando não estiver instalando
     m_progressBar->setVisible(false);
 
+    QString sizeStr = m_info.size > 0 ? formatBytes(m_info.size) : QString();
     if (installed) {
+        m_sizeLabel->setText(sizeStr.isEmpty() ? tr("Installed") : QStringLiteral("%1  •  %2").arg(sizeStr, tr("Installed")));
         m_actionButton->setIcon(QIcon::fromTheme(QStringLiteral("view-refresh")));
         m_actionButton->setText(tr("Reinstall"));
         m_actionButton->setEnabled(true);
     } else {
+        m_sizeLabel->setText(sizeStr);
         m_actionButton->setIcon(QIcon::fromTheme(QStringLiteral("download"),
                                                  QIcon::fromTheme(QStringLiteral("edit-download"))));
         m_actionButton->setText(tr("Download"));
@@ -312,49 +264,7 @@ void ProtonDownloadWidget::setupUi()
     separator->setFrameShadow(QFrame::Sunken);
     mainLayout->addWidget(separator);
 
-    // UMU Launcher Card
-    m_umuCard = new QFrame(this);
-    m_umuCard->setObjectName(QStringLiteral("umuCard"));
-    m_umuCard->setStyleSheet(QStringLiteral(
-        "#umuCard {"
-        "    background-color: palette(base);"
-        "    border: 1px solid palette(mid);"
-        "    border-radius: 6px;"
-        "}"
-    ));
-    auto *umuLayout = new QHBoxLayout(m_umuCard);
-    umuLayout->setContentsMargins(14, 10, 14, 10);
-    umuLayout->setSpacing(14);
-
-    auto *umuIconLabel = new QLabel(m_umuCard);
-    umuIconLabel->setFixedSize(36, 36);
-    umuIconLabel->setPixmap(QIcon::fromTheme(QStringLiteral("applications-games")).pixmap(32, 32));
-    umuLayout->addWidget(umuIconLabel);
-
-    auto *umuInfoLayout = new QVBoxLayout();
-    auto *umuTitle = new QLabel(QStringLiteral("<b>UMU Launcher</b> (Steam Linux Runtime Compatibility)"), m_umuCard);
-    umuInfoLayout->addWidget(umuTitle);
-
-    m_umuStatusLabel = new QLabel(m_umuCard);
-    m_umuStatusLabel->setStyleSheet(QStringLiteral("color: palette(placeholder-text); font-size: 11px;"));
-    umuInfoLayout->addWidget(m_umuStatusLabel);
-    umuLayout->addLayout(umuInfoLayout, 1);
-
-    m_umuButton = new QPushButton(m_umuCard);
-    m_umuButton->setCursor(Qt::PointingHandCursor);
-    connect(m_umuButton, &QPushButton::clicked, this, [this]() {
-        auto *mgr = new UmuManager(this);
-        mgr->startDownload(this, [this](bool success) {
-            Q_UNUSED(success);
-            updateUmuCard();
-        });
-    });
-    umuLayout->addWidget(m_umuButton);
-
-    mainLayout->addWidget(m_umuCard);
-    updateUmuCard();
-
-    // Scroll Area com a lista de versões
+    // Scroll Area com a lista rolável (contendo o UMU no topo e todas as versões do Proton)
     auto *scrollArea = new QScrollArea(this);
     scrollArea->setWidgetResizable(true);
     scrollArea->setFrameShape(QFrame::NoFrame);
@@ -365,23 +275,82 @@ void ProtonDownloadWidget::setupUi()
     m_rowsLayout = new QVBoxLayout(scrollContent);
     m_rowsLayout->setContentsMargins(0, 4, 6, 4);
     m_rowsLayout->setSpacing(10);
+
+    // Card do UMU Launcher como o primeiro item da lista rolável
+    createUmuCard(scrollContent);
+    m_rowsLayout->addWidget(m_umuCard);
     m_rowsLayout->addStretch();
 
     scrollArea->setWidget(scrollContent);
     mainLayout->addWidget(scrollArea, 1);
 }
 
+void ProtonDownloadWidget::createUmuCard(QWidget *parent)
+{
+    m_umuCard = new QFrame(parent);
+    m_umuCard->setObjectName(QStringLiteral("protonCard"));
+    m_umuCard->setStyleSheet(QStringLiteral(
+        "#protonCard {"
+        "    background-color: palette(base);"
+        "    border: 1px solid palette(mid);"
+        "    border-radius: 6px;"
+        "}"
+        "#protonCard:hover {"
+        "    border: 1px solid rgba(61, 174, 233, 0.65);"
+        "}"
+    ));
+
+    auto *frameLayout = new QHBoxLayout(m_umuCard);
+    frameLayout->setContentsMargins(14, 10, 14, 10);
+    frameLayout->setSpacing(14);
+
+    auto *titleLayout = new QHBoxLayout();
+    titleLayout->setSpacing(8);
+    titleLayout->setContentsMargins(0, 0, 0, 0);
+
+    auto *umuTitle = new QLabel(QStringLiteral("UMU Launcher"), m_umuCard);
+    QFont nameFont = umuTitle->font();
+    nameFont.setBold(true);
+    umuTitle->setFont(nameFont);
+    titleLayout->addWidget(umuTitle);
+
+    m_umuStatusLabel = new QLabel(m_umuCard);
+    m_umuStatusLabel->setStyleSheet(QStringLiteral("color: palette(placeholder-text); font-size: 12px;"));
+    titleLayout->addWidget(m_umuStatusLabel);
+
+    frameLayout->addLayout(titleLayout);
+    frameLayout->addStretch(1);
+
+    m_umuButton = new QPushButton(m_umuCard);
+    m_umuButton->setFixedWidth(115);
+    m_umuButton->setFixedHeight(30);
+    m_umuButton->setCursor(Qt::PointingHandCursor);
+    connect(m_umuButton, &QPushButton::clicked, this, [this]() {
+        auto *mgr = new UmuManager(this);
+        mgr->startDownload(this, [this](bool success) {
+            Q_UNUSED(success);
+            updateUmuCard();
+        });
+    });
+    frameLayout->addWidget(m_umuButton);
+
+    updateUmuCard();
+}
+
 void ProtonDownloadWidget::updateUmuCard()
 {
     QString bin = UmuManager::findUmuBin();
-    if (!bin.isEmpty()) {
-        m_umuStatusLabel->setText(tr("Installed: %1").arg(bin));
-        m_umuButton->setText(tr("Reinstall / Update"));
+    bool isInstalled = !bin.isEmpty();
+
+    if (isInstalled) {
+        m_umuStatusLabel->setText(tr("Steam Linux Runtime  •  Installed"));
+        m_umuButton->setText(tr("Reinstall"));
         m_umuButton->setIcon(QIcon::fromTheme(QStringLiteral("view-refresh")));
     } else {
-        m_umuStatusLabel->setText(tr("Not installed. Recommended for running games with Proton."));
-        m_umuButton->setText(tr("Download UMU"));
-        m_umuButton->setIcon(QIcon::fromTheme(QStringLiteral("download")));
+        m_umuStatusLabel->setText(tr("Steam Linux Runtime"));
+        m_umuButton->setText(tr("Download"));
+        m_umuButton->setIcon(QIcon::fromTheme(QStringLiteral("download"),
+                                             QIcon::fromTheme(QStringLiteral("edit-download"))));
     }
 }
 
@@ -454,9 +423,9 @@ QList<ProtonReleaseInfo> ProtonDownloadWidget::getFallbackReleases() const
 
 void ProtonDownloadWidget::populateRows(const QList<ProtonReleaseInfo> &releases)
 {
-    // Limpa widgets antigos mantendo o stretch final
-    while (m_rowsLayout->count() > 1) {
-        QLayoutItem *item = m_rowsLayout->takeAt(0);
+    // Limpa widgets antigos de releases mantendo o m_umuCard (índice 0) e o stretch final
+    while (m_rowsLayout->count() > 2) {
+        QLayoutItem *item = m_rowsLayout->takeAt(1);
         if (item->widget()) {
             delete item->widget();
         }
